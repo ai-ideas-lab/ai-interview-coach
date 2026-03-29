@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // 用户偏好
+  experienceLevel String @default("entry") // entry, junior, mid, senior
+  targetIndustry  String @default("tech")  // tech, finance, healthcare, etc.
+  targetRole      String @default("developer") // developer, manager, designer, etc.
+  
+  // 面试记录
+  interviewSessions InterviewSession[]
+  feedbacks         Feedback[]
+  progress          Progress[]
+  
+  @@map("users")
+}
+
+model InterviewSession {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // technical, behavioral, case_study, system_design
+  title       String
+  description String?
+  status      String   @default("planning") // planning, in_progress, completed, cancelled
+  startTime   DateTime?
+  endTime     DateTime?
+  duration    Int?     // in minutes
+  score       Int?     // 1-100
+  feedback    String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   InterviewQuestion[]
+  recordings  Recording[]
+  feedbacks   Feedback[]
+  
+  @@map("interview_sessions")
+}
+
+model InterviewQuestion {
+  id             String   @id @default(cuid())
+  sessionId      String
+  type           String   // technical, behavioral, case_study
+  category       String   // algorithms, data_structures, system_design, etc.
+  question       String
+  expectedAnswer String?
+  userAnswer     String?
+  rating         Int?     // 1-5
+  notes         String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  session        InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@map("interview_questions")
+}
+
+model Feedback {
+  id              String   @id @default(cuid())
+  userId          String
+  sessionId       String?
+  type            String   // overall, technical, communication, behavioral
+  content         String
+  rating          Int      // 1-5
+  suggestions     String?
+  strengths       String?
+  improvements    String?
+  actionableItems String[] // JSON array of actionable items
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session         InterviewSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@map("feedbacks")
+}
+
+model Progress {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String   // technical_skills, communication, behavioral, system_design
+  level     Int      // 1-10
+  score     Int      // 1-100
+  completed Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, category])
+  @@map("progress")
+}
+
+model Recording {
+  id         String   @id @default(cuid())
+  sessionId  String
+  type       String   // audio, video, screen
+  url        String
+  duration   Int      // in seconds
+  transcript String?  // AI-generated transcript
+  analysis   String?  // AI analysis
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  session    InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@map("recordings")
+}
+
+// 预定义的面试问题库
+model QuestionBank {
+  id          String   @id @default(cuid())
+  type        String   // technical, behavioral, case_study
+  category    String
+  question    String
+  difficulty  String   // easy, medium, hard
+  tags        String[] // JSON array of tags
+  expectedAnswer String?
+  hints       String[] // JSON array of hints
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("question_bank")
+}
